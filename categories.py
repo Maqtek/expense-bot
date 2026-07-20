@@ -50,7 +50,7 @@ def categorize(name: str) -> str:
         for kw in keywords:
             if kw in name_low and len(kw) > best_len:
                 best_category = category
-                best_len = len(kw)   # запоминаем длину самого длинного совпадения
+                best_len = len(kw)
 
     return best_category
 

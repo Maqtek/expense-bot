@@ -1,4 +1,5 @@
 import sqlite3
+from categories import categorize
 
 DB_PATH = "bot.db"
 
@@ -17,7 +18,7 @@ def init_db() -> None:
         CREATE TABLE IF NOT EXISTS receipts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            purchased_date TEXT,
+            purchased_at TEXT,
             shop TEXT,
             total REAL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -69,9 +70,11 @@ def save_receipt(user_id: int, receipt: dict) -> int:
     receipt_id = cursor.lastrowid
 
     for item in receipt["items"]:
+        category = categorize(item["name"])
+
         cursor.execute(
-            "INSERT INTO items (receipt_id, name, price, quantity, sum) VALUES (?, ?, ?, ?, ?)",
-            (receipt_id, item["name"], item["price"], item["quantity"], item["sum"]),
+            "INSERT INTO items (receipt_id, name, price, quantity, sum, category) VALUES (?, ?, ?, ?, ?, ?)",
+            (receipt_id, item["name"], item["price"], item["quantity"], item["sum"], category),
         )
 
     connection.commit()
