@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from config import BOT_TOKEN, PROVERKACHEKA_TOKEN
-from database import init_db, save_receipt
+from database import init_db, save_receipt, get_receipt_items
 from receipts import get_receipts
 from qr import read_qr
 
@@ -56,12 +56,13 @@ async def process_receipt(message: Message, qr_raw: str):
     """Общая обработка чека"""
     try:
         receipt = get_receipts(qr_raw, PROVERKACHEKA_TOKEN)
-        save_receipt(user_id=message.from_user.id, receipt=receipt)
+        receipt_id = save_receipt(user_id=message.from_user.id, receipt=receipt)
 
-        items = receipt["items"]
+        items = get_receipt_items(receipt_id)
+
         text = f"Чек сохранен: {len(items)} позиций в сумме на {receipt['total']:.2f} ₽\n\n"
         for it in items:
-            text += f"{it['name']} - {it['sum']:.2f} ₽\n"
+            text += f"{it['name']} - {it['sum']:.2f} ₽  [{it['category']}]\n"
 
         await message.answer(text)
 
