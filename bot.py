@@ -1,11 +1,14 @@
 import asyncio
-from aiogram import Bot, Dispatcher
+
+from PIL.ImageMath import lambda_eval
+from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message
 
 from config import BOT_TOKEN, PROVERKACHEKA_TOKEN
 from database import init_db, save_receipt
 from receipts import get_receipts
+from qr import read_qr
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -15,6 +18,42 @@ async def cmd_start(message: Message):
     await message.answer(
         "Скоро научусь принимать чеки"
     )
+
+@dp.message(F.photo)
+async def handle_photo(message: Message):
+    await message.answer(
+        "Обрабатываю фото..."
+    )
+
+    photo = message.photo[-1]
+
+    file_path = (f"/tmp/{photo.file_id}.jpg")
+    await bot.download(photo, destination=file_path)
+
+    qr_raw = read_qr(file_path)
+
+    if qr_raw is None:
+        await message.answer(
+            "Не удалось распознать QR-код с фото."
+            "Попробуйте снять чётче при хорошем свете или пришлите QR-строку текстом"
+        )
+        return
+
+    try:
+        receipt = get_receipts(qr_raw, PROVERKACHEKA_TOKEN)
+        receipt_id = save_receipt(user_id=message.from_user.id, receipt=receipt)
+
+        items = receipt["items"]
+        text = f"Чек сохранен: {len(items)} позиций в сумме на {receipt['total']:.2f} ₽\n\n"
+        for it in items:
+            text += f"{it["name"]} - {it["sum"]:.2f} ₽\n"
+
+        await message.answer(text)
+
+    except Exception as e:
+        await message.answer(
+            f"Не получилось обработать чек: {e}"
+        )
 
 @dp.message()
 async def handle_text(message: Message):
