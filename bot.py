@@ -1,6 +1,5 @@
 import asyncio
 
-from PIL.ImageMath import lambda_eval
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message
@@ -16,7 +15,7 @@ dp = Dispatcher()
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
-        "Скоро научусь принимать чеки"
+        "Пришли мне фото чека с QR-кодом или QR-строку текстом"
     )
 
 @dp.message(F.photo)
@@ -31,7 +30,6 @@ async def handle_photo(message: Message):
     await bot.download(photo, destination=file_path)
 
     qr_raw = read_qr(file_path)
-
     if qr_raw is None:
         await message.answer(
             "Не удалось распознать QR-код с фото."
@@ -39,21 +37,7 @@ async def handle_photo(message: Message):
         )
         return
 
-    try:
-        receipt = get_receipts(qr_raw, PROVERKACHEKA_TOKEN)
-        receipt_id = save_receipt(user_id=message.from_user.id, receipt=receipt)
-
-        items = receipt["items"]
-        text = f"Чек сохранен: {len(items)} позиций в сумме на {receipt['total']:.2f} ₽\n\n"
-        for it in items:
-            text += f"{it["name"]} - {it["sum"]:.2f} ₽\n"
-
-        await message.answer(text)
-
-    except Exception as e:
-        await message.answer(
-            f"Не получилось обработать чек: {e}"
-        )
+    await process_receipt(message, qr_raw)
 
 @dp.message()
 async def handle_text(message: Message):
@@ -61,21 +45,23 @@ async def handle_text(message: Message):
 
     if not qr_raw.startswith("t="):
         await message.answer(
-            "Пришли мне QR-строку (начинается с t=)"
+            "Пришли QR-строку (начинается с t=)"
         )
-
         return
 
-    await message.answer("Обрабатываю чек...")
+    await process_receipt(message, qr_raw)
 
+
+async def process_receipt(message: Message, qr_raw: str):
+    """Общая обработка чека"""
     try:
         receipt = get_receipts(qr_raw, PROVERKACHEKA_TOKEN)
-        receipt_id = save_receipt(user_id=message.from_user.id, receipt=receipt)
+        save_receipt(user_id=message.from_user.id, receipt=receipt)
 
         items = receipt["items"]
         text = f"Чек сохранен: {len(items)} позиций в сумме на {receipt['total']:.2f} ₽\n\n"
         for it in items:
-            text += f"{it["name"]} - {it["sum"]:.2f} ₽\n"
+            text += f"{it['name']} - {it['sum']:.2f} ₽\n"
 
         await message.answer(text)
 
@@ -83,7 +69,6 @@ async def handle_text(message: Message):
         await message.answer(
             f"Не получилось обработать чек: {e}"
         )
-
 
 async def main():
     init_db()
