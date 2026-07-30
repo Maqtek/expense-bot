@@ -54,6 +54,10 @@ def categorize(name: str) -> str:
 
     return best_category
 
+def all_categories() -> list[str]:
+    """Список всех категорий"""
+    return list(CATEGORIES.keys()) + ["Без категории"]
+
 
 # Быстрая проверка прямо на товарах из реального чека.
 if __name__ == "__main__":

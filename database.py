@@ -10,7 +10,7 @@ def get_connection() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """Создает таблицу, если их еще нет."""
+    """Создает таблицы, если их еще нет."""
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -79,7 +79,6 @@ def save_receipt(user_id: int, receipt: dict) -> int:
 
     connection.commit()
     connection.close()
-
     return receipt_id
 
 
@@ -91,10 +90,9 @@ def get_user_rule(user_id: int, name: str) -> str | None:
         "SELECT category FROM category_rules WHERE user_id = ? AND keyword = ?",
         (user_id, name.lower()),
     )
-
     row = cursor.fetchone()
-    connection.close()
 
+    connection.close()
     return row[0] if row else None
 
 
@@ -144,6 +142,42 @@ def get_receipt_items(receipt_id: int) -> list[dict]:
          "category": r[3]
          } for r in rows
     ]
+
+
+def update_item_category(user_id: int, item_id: int, category: str) -> bool:
+    """Меняет категорию товара. Только если товар принадлежит этому пользователю"""
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute(
+        """UPDATE items SET category = ? WHERE id = ?
+            AND receipt_id IN (
+                SELECT id FROM receipts WHERE user_id = ?
+                )
+        """
+        ,
+        (category, item_id, user_id),
+    )
+    changed = cursor.rowcount > 0
+
+    connection.commit()
+    connection.close()
+    return changed
+
+
+def get_item_name(item_id: int) -> str | None:
+    """Возвращает название товара по его id"""
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute(
+        "SELECT name FROM items WHERE id = ?",
+        (item_id,),
+    )
+
+    row = cursor.fetchone()
+
+    connection.close()
+    return row[0] if row else None
+
 
 if __name__ == "__main__":
     from receipts import get_receipts

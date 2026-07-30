@@ -6,9 +6,10 @@ from aiogram.types import Message
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 
 from config import BOT_TOKEN, PROVERKACHEKA_TOKEN
-from database import init_db, save_receipt, get_receipt_items
+from database import init_db, save_receipt, get_receipt_items, update_item_category, get_item_name, save_user_rule
 from receipts import get_receipts
 from qr import read_qr
+from categories import all_categories
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
@@ -36,6 +37,47 @@ async def edit_receipt(callback: CallbackQuery):
 
     await callback.message.answer(
         "Выбери товар для изменения категории: ", reply_markup=keyboard
+    )
+    await callback.answer()
+
+
+@dp.callback_query(F.data.startswith("edit_item:"))
+async def edit_item(callback: CallbackQuery):
+    item_id = int(callback.data.split(":")[1])
+
+    buttons = [
+        [InlineKeyboardButton(
+            text=category,
+            callback_data=f"set_category:{item_id}:{category}",
+        )] for category in all_categories()
+    ]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    await callback.message.answer(
+        "Выбери новую категорию", reply_markup=keyboard
+    )
+    await callback.answer()
+
+
+@dp.callback_query(F.data.startswith("set_category:"))
+async def set_category(callback: CallbackQuery):
+    data = callback.data.split(":")
+    item_id = int(data[1])
+    category = data[2]
+
+    changed = update_item_category(callback.from_user.id, item_id, category)
+    if not changed:
+        await callback.answer(
+            "Это не твой чек", show_alert=True
+        )
+        return
+
+    name = get_item_name(item_id)
+    if name:
+        save_user_rule(callback.from_user.id, name, category)
+
+    await callback.message.answer(
+        f"Готово: {name} теперь в категории {category}"
     )
     await callback.answer()
 
