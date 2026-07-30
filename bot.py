@@ -3,6 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 
 from config import BOT_TOKEN, PROVERKACHEKA_TOKEN
 from database import init_db, save_receipt, get_receipt_items
@@ -17,6 +18,27 @@ async def cmd_start(message: Message):
     await message.answer(
         "Пришли мне фото чека с QR-кодом или QR-строку текстом"
     )
+
+
+@dp.callback_query(F.data.startswith("edit_receipt:"))
+async def edit_receipt(callback: CallbackQuery):
+    receipt_id = int(callback.data.split(":")[1])
+
+    items = get_receipt_items(receipt_id)
+
+    buttons = [
+        [InlineKeyboardButton(
+            text=f"{it['name']}",
+            callback_data=f"edit_item:{it['id']}",
+        )] for it in items
+    ]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    await callback.message.answer(
+        "Выбери товар для изменения категории: ", reply_markup=keyboard
+    )
+    await callback.answer()
+
 
 @dp.message(F.photo)
 async def handle_photo(message: Message):
@@ -64,7 +86,14 @@ async def process_receipt(message: Message, qr_raw: str):
         for it in items:
             text += f"{it['name']} - {it['sum']:.2f} ₽  [{it['category']}]\n"
 
-        await message.answer(text)
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(
+                text="Изменить категорию",
+                callback_data=f"edit_receipt:{receipt_id}",
+            )]
+        ])
+
+        await message.answer(text, reply_markup=keyboard)
 
     except Exception as e:
         await message.answer(
