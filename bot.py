@@ -11,6 +11,8 @@ from receipts import get_receipts
 from qr import read_qr
 from categories import all_categories
 
+CATEGORY_PER_PAGE = 4
+
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
@@ -41,17 +43,22 @@ async def edit_receipt(callback: CallbackQuery):
     await callback.answer()
 
 
+@dp.callback_query(F.data.startswith("category_page:"))
+async def category_page(callback: CallbackQuery):
+    data = callback.data.split(":")
+    item_id = int(data[1])
+    page = int(data[2])
+
+    keyboard = build_categories_keyboard(item_id, page)
+
+    await callback.message.edit_reply_markup(reply_markup=keyboard)
+    await callback.answer()
+
 @dp.callback_query(F.data.startswith("edit_item:"))
 async def edit_item(callback: CallbackQuery):
     item_id = int(callback.data.split(":")[1])
 
-    buttons = [
-        [InlineKeyboardButton(
-            text=category,
-            callback_data=f"set_category:{item_id}:{category}",
-        )] for category in all_categories()
-    ]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+    keyboard = build_categories_keyboard(item_id, page=0)
 
     await callback.message.answer(
         "Выбери новую категорию", reply_markup=keyboard
@@ -141,6 +148,35 @@ async def process_receipt(message: Message, qr_raw: str):
         await message.answer(
             f"Не получилось обработать чек: {e}"
         )
+
+
+def build_categories_keyboard(item_id: int, page: int) -> InlineKeyboardMarkup:
+    """Клавиатура категорий для товаров"""
+    categories = all_categories()
+
+    start = page * CATEGORY_PER_PAGE
+    end = start + CATEGORY_PER_PAGE
+    page_categories = categories[start:end]
+
+    buttons = [
+        [InlineKeyboardButton(
+            text=cat,
+            callback_data=f"category_page:{item_id}:{page + 1}",
+        )] for cat in page_categories
+    ]
+
+    nav = []
+    if page > 0:
+        nav.append(InlineKeyboardButton(
+            text="⬅️", callback_data=f"category_page:{item_id}:{page - 1}"))
+    if end < len(categories):
+        nav.append(InlineKeyboardButton(
+            text="➡️", callback_data=f"category_page:{item_id}:{page + 1}"))
+
+    if nav:
+        buttons.append(nav)
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 async def main():
     init_db()
