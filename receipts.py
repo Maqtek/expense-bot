@@ -9,7 +9,7 @@ def get_receipts(qr_raw: str, token: str) -> dict:
 
     Args:
         qr_raw: строка QR-кода
-        token: список позиций
+        token: токен для сайта proverkacheka.com.
     Return:
         Список позиций
     """
