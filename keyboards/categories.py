@@ -1,9 +1,9 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from bot import CATEGORY_PER_PAGE
 from categories import all_categories
 
 CATEGORY_PER_PAGE = 8
+
 
 
 def build_categories_keyboard(item_id: int, page: int) -> InlineKeyboardMarkup:
