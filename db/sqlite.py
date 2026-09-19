@@ -1,16 +1,17 @@
 import sqlite3
 from db.base import Database
-from categories import categorize
+from categories import categorize, get_parent_category, DEFAULT_PARENT
 
 
 class SQLiteDatabase(Database):
     """Реализация базы данных на SQLite."""
-
     def __init__(self, db_path: str) -> None:
         self.db_path = db_path
 
+
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.db_path)
+
 
     def init_db(self) -> None:
         connection = self._connect()
@@ -36,6 +37,7 @@ class SQLiteDatabase(Database):
                 quantity INTEGER,
                 sum REAL,
                 category TEXT DEFAULT "Без категории",
+                excluded INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (receipt_id) REFERENCES receipts (id)
             )
         """)
@@ -49,8 +51,21 @@ class SQLiteDatabase(Database):
             )
         """)
 
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS custom_categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                parent TEXT NOT NULL,
+                name TEXT NOT NULL,
+                UNIQUE(user_id, name)
+            )
+        """)
+
+
+
         connection.commit()
         connection.close()
+
 
     def save_receipt(self, user_id: int, receipt: dict) -> int:
         connection = self._connect()
@@ -74,6 +89,7 @@ class SQLiteDatabase(Database):
         connection.close()
         return receipt_id
 
+
     def get_receipt_items(self, receipt_id: int) -> list[dict]:
         connection = self._connect()
         cursor = connection.cursor()
@@ -93,6 +109,7 @@ class SQLiteDatabase(Database):
             } for r in rows
         ]
 
+
     def get_item_name(self, item_id: int) -> str | None:
         connection = self._connect()
         cursor = connection.cursor()
@@ -105,6 +122,7 @@ class SQLiteDatabase(Database):
 
         connection.close()
         return row[0] if row else None
+
 
     def update_item_category(self, user_id: int, item_id: int, category: str) -> bool:
         connection = self._connect()
@@ -121,6 +139,7 @@ class SQLiteDatabase(Database):
         connection.close()
         return changed
 
+
     def get_user_rule(self, user_id: int, name: str) -> str | None:
         connection = self._connect()
         cursor = connection.cursor()
@@ -133,6 +152,7 @@ class SQLiteDatabase(Database):
 
         connection.close()
         return row[0] if row else None
+
 
     def save_user_rule(self, user_id: int, name: str, category: str) -> None:
         connection = self._connect()
@@ -150,12 +170,52 @@ class SQLiteDatabase(Database):
         connection.commit()
         connection.close()
 
+
     def categorize_for_user(self, user_id: int, name: str) -> str:
         rule = self.get_user_rule(user_id, name)
 
         if rule is not None:
             return rule
         return categorize(name)
+
+
+    def save_custom_category(self, user_id: int, parent: str, name: str) -> None:
+        connection = self._connect()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            "INSERT OR IGNORE INTO custom_categories (user_id, parent, name) VALUES (?, ?, ?)",
+            (user_id, parent, name)
+        )
+
+        connection.commit()
+        connection.close()
+
+
+    def get_custom_category_parent(self, user_id: int, name: str) -> str | None:
+        connection = self._connect()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            "SELECT parent from custom_categories WHERE user_id = ? AND name = ?",
+            (user_id, name)
+        )
+        row = cursor.fetchone()
+
+        connection.close()
+        return row[0] if row else None
+
+
+    def get_parent_category(self, user_id: int, name: str) -> str:
+        parent = get_parent_category(name)
+        if parent is not None:
+            return parent
+
+        parent = self.get_custom_category_parent(user_id, name)
+        if parent is not None:
+            return parent
+
+        return DEFAULT_PARENT
 
 
 if __name__ == "__main__":
