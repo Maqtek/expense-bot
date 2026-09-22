@@ -4,6 +4,9 @@ from datetime import datetime
 
 API_URL = "https://proverkacheka.com/api/v1/check/get"
 
+_session = requests.Session()
+_session.trust_env = False
+
 def get_receipts(qr_raw: str, token: str) -> dict:
     """Получает позиции чека по QR-строке через сайт proverckacheka.com.
 
@@ -13,7 +16,7 @@ def get_receipts(qr_raw: str, token: str) -> dict:
     Return:
         Список позиций
     """
-    response = requests.post(
+    response = _session.post(
         API_URL,
         data = {"token" : token, "qrraw" : qr_raw },
         timeout = 30

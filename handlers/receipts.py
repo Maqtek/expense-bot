@@ -1,5 +1,5 @@
 from aiogram import Router, Bot, F
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
 from config import PROVERKACHEKA_TOKEN
@@ -19,7 +19,7 @@ async def cmd_start(message: Message):
 
 @router.message(F.photo)
 async def handle_photo(message: Message, bot: Bot):
-    await message.answer("Обрабатываю фото...")
+    status = await message.answer("Обрабатываю фото...")
 
     photo = message.photo[-1]
     file_path = f"/tmp/{photo.file_id}.jpg"
@@ -27,8 +27,8 @@ async def handle_photo(message: Message, bot: Bot):
 
     qr_raw = read_qr(file_path)
     if qr_raw is None:
-        await message.answer(
-            "Не удалось распознать QR-код с фото."
+        await status.edit_text(
+            "Не удалось распознать QR-код с фото. "
             "Попробуйте снять чётче или пришлите QR-строку текстом"
         )
         return
@@ -36,7 +36,7 @@ async def handle_photo(message: Message, bot: Bot):
     await process_receipt(message, qr_raw)
 
 
-@router.message()
+@router.message(StateFilter(None))
 async def handle_text(message: Message):
     qr_raw = message.text.strip()
     if not qr_raw.startswith("t="):
