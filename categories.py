@@ -32,9 +32,12 @@ CATEGORIES = {
             "хлеб", "батон", "багет", "лаваш", "булка",
         ],
     },
+    "Прочее": {
+        "Без категории": [],
+    },
 }
 
-DEFAULT_PARENT = "Другое"
+DEFAULT_PARENT = "Прочее"
 DEFAULT_CATEGORY = "Без категории"
 
 
@@ -64,7 +67,7 @@ def all_categories() -> list[str]:
     result = []
     for subcategories in CATEGORIES.values():
         result.extend(subcategories.keys())
-    return result + [DEFAULT_CATEGORY]
+    return result
 
 
 def all_parents() -> list[str]:

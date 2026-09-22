@@ -47,7 +47,7 @@ class Database(ABC):
 
     @abstractmethod
     def categorize_for_user(self, user_id: int, name: str) -> str:
-        """Категоризация с учетом личных правил, при этом личное правило имеет высший приоритет."""\
+        """Категоризация с учетом личных правил, при этом личное правило имеет высший приоритет."""
 
     @abstractmethod
     def save_custom_category(self, user_id: int, parent: str, name: str) -> None:
@@ -56,3 +56,7 @@ class Database(ABC):
     @abstractmethod
     def get_parent_category(self, user_id: int, name: str) -> str:
         """Вовращает родительскую категорию для подкатегории"""
+
+    @abstractmethod
+    def get_custom_categories(self, user_id: int, parent: str) -> list[str]:
+        """Возвращает личный подкатегории пользователя"""
