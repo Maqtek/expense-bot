@@ -2,9 +2,11 @@ from aiogram import Router, Bot, F
 from aiogram.filters import Command, StateFilter
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
+from pathlib import Path
+
 from config import PROVERKACHEKA_TOKEN
 from receipts import get_receipts
-from qr import read_qr
+from qr import read_qr, QRError
 from deps import db
 
 router = Router()
@@ -23,15 +25,15 @@ async def handle_photo(message: Message, bot: Bot):
 
     photo = message.photo[-1]
     file_path = f"/tmp/{photo.file_id}.jpg"
-    await bot.download(photo, destination=file_path)
 
-    qr_raw = read_qr(file_path)
-    if qr_raw is None:
-        await status.edit_text(
-            "Не удалось распознать QR-код с фото. "
-            "Попробуйте снять чётче или пришлите QR-строку текстом"
-        )
+    try:
+        await bot.download(photo, destination=file_path)
+        qr_raw = read_qr(file_path)
+    except QRError as e:
+        await status.edit_text(e.user_message)
         return
+    finally:
+        Path(file_path).unlink(missing_ok=True)
 
     await process_receipt(message, qr_raw)
 
