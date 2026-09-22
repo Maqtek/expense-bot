@@ -218,6 +218,19 @@ class SQLiteDatabase(Database):
         return DEFAULT_PARENT
 
 
+    def get_custom_categories(self, user_id: int, parent: str) -> list[str]:
+        connection = self._connect()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            "SELECT name FROM custom_categories WHERE user_id = ? AND parent = ? ORDER BY name",
+            (user_id, parent)
+        )
+        rows = cursor.fetchall()
+
+        connection.close()
+        return [row[0] for row in rows]
+
 if __name__ == "__main__":
     db = SQLiteDatabase("bot_test.db")
     db.init_db()
